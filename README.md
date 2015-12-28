@@ -4,6 +4,11 @@ This project creates an Apache Kafka HTTP endpoint for producing and consuming
 messages. It is built on [the Dropwizard framework] that makes Java REST
 services operator-friendly and easy to deploy.
 
+**Forked** **version:** We added support for CORS and IMS Caliper Sensor API:
+ * Receives message in payload. Message is a Caliper model (Json)
+ * Topic is not dynamic. *todo* set via configuration
+ * Support SSL/TLS
+
 ## Running in Development with Vagrant
 
 A `Vagrantfile` is included in the project to quickly get up and running with
