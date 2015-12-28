@@ -7,7 +7,7 @@ services operator-friendly and easy to deploy.
 **Forked** **version:** We added support for Caliper Sensor API:
  * Receives message in payload. Message is a Caliper model (JSON)
  * Topic is not dynamic. *todo* set via configuration
- * Support SSL/TLS
+ * Support for SSL/TLS
  * Support for CORS
 
 ## Running in Development with Vagrant
