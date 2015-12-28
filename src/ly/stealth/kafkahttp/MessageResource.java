@@ -24,6 +24,8 @@ public class MessageResource {
     private KafkaProducer producer;
     private Properties consumerCfg;
 
+    private static final String TOPIC = "caliper_events";
+
     public MessageResource(KafkaProducer producer, Properties consumerCfg) {
         this.producer = producer;
         this.consumerCfg = consumerCfg;
@@ -31,16 +33,14 @@ public class MessageResource {
 
     @POST
     @Timed
+    @Consumes(MediaType.APPLICATION_JSON)
     public Response produce(
-            @FormParam("topic") String topic,
-            @FormParam("key") List<String> keys,
-            @FormParam("message") List<String> messages
+            String message
     ) {
-        List<String> errors = new ArrayList<>();
-        if (Strings.isNullOrEmpty(topic)) errors.add("Undefined topic");
+        System.out.println("Caliper event:" + message);
 
-        if (messages.isEmpty()) errors.add("Undefined message");
-        if (!keys.isEmpty() && keys.size() != messages.size()) errors.add("Messages count != keys count");
+        List<String> errors = new ArrayList<>();
+        if (Strings.isNullOrEmpty(message)) errors.add("Undefined message");
 
         if (!errors.isEmpty())
             return Response.status(400)
@@ -48,22 +48,19 @@ public class MessageResource {
                     .build();
 
         Charset charset = Charset.forName("utf-8");
-        for (int i = 0; i < messages.size(); i++) {
-            String key = keys.isEmpty() ? null : keys.get(i);
-            String message = messages.get(i);
-            producer.send(new ProducerRecord(topic, key != null ? key.getBytes(charset) : null, message.getBytes(charset)));
-        }
+        producer.send(new ProducerRecord(TOPIC, null, message.getBytes(charset)));
 
-        return Response.ok().build();
+        return Response.ok()
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
     }
 
     @GET
     @Timed
     public Response consume(
-            @QueryParam("topic") String topic,
             @QueryParam("timeout") Integer timeout
     ) {
-        if (Strings.isNullOrEmpty(topic))
+        if (Strings.isNullOrEmpty(TOPIC))
             return Response.status(400)
                     .entity(new String[]{"Undefined topic"})
                     .build();
@@ -74,9 +71,9 @@ public class MessageResource {
         ConsumerConfig config = new ConsumerConfig(props);
         ConsumerConnector connector = Consumer.createJavaConsumerConnector(config);
 
-        Map<String, Integer> streamCounts = Collections.singletonMap(topic, 1);
+        Map<String, Integer> streamCounts = Collections.singletonMap(TOPIC, 1);
         Map<String, List<KafkaStream<byte[], byte[]>>> streams = connector.createMessageStreams(streamCounts);
-        KafkaStream<byte[], byte[]> stream = streams.get(topic).get(0);
+        KafkaStream<byte[], byte[]> stream = streams.get(TOPIC).get(0);
 
         List<Message> messages = new ArrayList<>();
         try {
@@ -88,7 +85,18 @@ public class MessageResource {
             connector.shutdown();
         }
 
-        return Response.ok(messages).build();
+        return Response.ok(messages)
+                .build();
+    }
+
+    @OPTIONS
+    public Response corsHandler() {
+        return Response.ok()
+                .header("Access-Control-Allow-Credentials", "false")
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "GET, POST")
+                .header("Access-Control-Allow-Headers", "Content-Type,Access-Control-Allow-Origin")
+                .build();
     }
 
     public static class Message {
