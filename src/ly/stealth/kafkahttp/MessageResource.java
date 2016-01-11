@@ -9,8 +9,10 @@ import kafka.consumer.ConsumerTimeoutException;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.consumer.ConsumerConnector;
 import kafka.message.MessageAndMetadata;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -37,8 +39,6 @@ public class MessageResource {
     public Response produce(
             String message
     ) {
-        System.out.println("Caliper event:" + message);
-
         List<String> errors = new ArrayList<>();
         if (Strings.isNullOrEmpty(message)) errors.add("Undefined message");
 
@@ -48,7 +48,19 @@ public class MessageResource {
                     .build();
 
         Charset charset = Charset.forName("utf-8");
-        producer.send(new ProducerRecord(TOPIC, null, message.getBytes(charset)));
+        System.out.println("Calling Kafka: " + message);
+        producer.send(new ProducerRecord(TOPIC, null, message.getBytes(charset)), new Callback() {
+            @Override
+            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                if (e != null) {
+                    System.out.println("[Kafka] Failed:");
+                    e.printStackTrace();
+                } else {
+                    System.out.println("[Kafka] Success!");
+                }
+            }
+        });
+
 
         return Response.ok()
                 .header("Access-Control-Allow-Origin", "*")
